@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}VGG16 Image Classifier{% endblock %}
+
+{% block content %}
+<main class="layout">
+  <section class="hero">
+    <p class="eyebrow">Deep Learning Web Application</p>
+    <h1>Classify images with a pretrained {{ model_name }} network.</h1>
+    <p class="lead">
+      Upload a photo and the Flask app will preprocess it, run inference with
+      ImageNet weights, and return the top predictions with confidence scores.
+    </p>
+    <div class="feature-list">
+      <div class="feature-card">
+        <span>Model</span>
+        <strong>{{ model_name }}</strong>
+      </div>
+      <div class="feature-card">
+        <span>Framework</span>
+        <strong>Flask + TensorFlow</strong>
+      </div>
+      <div class="feature-card">
+        <span>Input</span>
+        <strong>PNG, JPG, JPEG, WEBP</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <form class="upload-form" method="post" enctype="multipart/form-data">
+      <label class="dropzone" for="image">
+        <span class="dropzone-title">Select an image</span>
+        <span class="dropzone-subtitle">Maximum size: 10 MB</span>
+        <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,.webp" required>
+      </label>
+      <button type="submit">Run Prediction</button>
+    </form>
+
+    {% if error %}
+    <div class="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if image_data %}
+    <div class="results-grid">
+      <div class="preview-card">
+        <h2>Uploaded Image</h2>
+        <img src="{{ image_data }}" alt="Uploaded image preview">
+        <p>{{ filename }}</p>
+      </div>
+
+      <div class="prediction-card">
+        <h2>Top Predictions</h2>
+        <ol>
+          {% for prediction in predictions %}
+          <li>
+            <div class="prediction-line">
+              <strong>{{ prediction.label }}</strong>
+              <span>{{ "%.2f"|format(prediction.confidence * 100) }}%</span>
+            </div>
+            <div class="progress">
+              <div class="progress-bar" style="width: {{ prediction.confidence * 100 }}%"></div>
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
