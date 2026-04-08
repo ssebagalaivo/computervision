@@ -1,28 +1,40 @@
 {% extends "base.html" %}
 
-{% block title %}VGG16 Image Classifier{% endblock %}
+{% block title %}Coffee Disease Intelligence{% endblock %}
 
 {% block content %}
 <main class="layout">
   <section class="hero">
-    <p class="eyebrow">Deep Learning Web Application</p>
-    <h1>Coffee Disease Detection with {{ model_name }} network.</h1>
+    <p class="eyebrow">Coffee Crop Intelligence</p>
+    <h1>Upload coffee leaves and berries for rapid disease screening.</h1>
     <p class="lead">
-      Upload a photo and the Flask app will preprocess it, run inference with
-      ImageNet weights, and return the top predictions with confidence scores.
+      Capture field photos, run an instant model-based diagnosis, and save each
+      analysis so you can track disease patterns over time.
     </p>
+
+    <div class="workflow-card">
+      <h2>What the app does</h2>
+      <ol class="workflow-list">
+        <li>Uploading images of coffee leaves and berries for analysis.</li>
+        <li>Automatic detection and prediction of possible coffee diseases.</li>
+        <li>Displaying disease diagnosis results to the user.</li>
+        <li>Providing recommendations on disease control and treatment.</li>
+        <li>Storing agricultural data and prediction results.</li>
+      </ol>
+    </div>
+
     <div class="feature-list">
       <div class="feature-card">
-        <span>Model</span>
+        <span>Sample Types</span>
+        <strong>Leaf &amp; Berry</strong>
+      </div>
+      <div class="feature-card">
+        <span>Diagnosis Engine</span>
         <strong>{{ model_name }}</strong>
       </div>
       <div class="feature-card">
-        <span>Framework</span>
-        <strong>Flask + TensorFlow</strong>
-      </div>
-      <div class="feature-card">
-        <span>Input</span>
-        <strong>PNG, JPG, JPEG, WEBP</strong>
+        <span>Field History</span>
+        <strong>Saved Analyses</strong>
       </div>
     </div>
   </section>
@@ -30,12 +42,44 @@
   <section class="panel">
     <form class="upload-form" method="post" enctype="multipart/form-data">
       <label class="dropzone" for="image">
-        <span class="dropzone-title">Select an image</span>
+        <span class="dropzone-title">Select a leaf or berry image</span>
         <span class="dropzone-subtitle">Maximum size: 10 MB</span>
         <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,.webp" required>
       </label>
-      <button type="submit">Run Prediction</button>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="sample_type">Sample type</label>
+          <select id="sample_type" name="sample_type">
+            <option value="leaf" {% if sample_type == 'leaf' %}selected{% endif %}>Leaf</option>
+            <option value="berry" {% if sample_type == 'berry' %}selected{% endif %}>Berry</option>
+            <option value="other" {% if sample_type == 'other' %}selected{% endif %}>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="location">Location (optional)</label>
+          <input
+            id="location"
+            name="location"
+            type="text"
+            placeholder="Farm block, district, GPS"
+            value="{{ location }}"
+          >
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="notes">Observed symptoms (optional)</label>
+        <textarea id="notes" name="notes" rows="3" placeholder="Yellowing edges, rust spots, etc.">{{ notes }}</textarea>
+      </div>
+
+      <button type="submit">Run Diagnosis</button>
+      <p class="form-note">Analysis metadata and predictions are saved to build a field history.</p>
     </form>
+
+    {% if model_notice %}
+    <div class="notice">{{ model_notice }}</div>
+    {% endif %}
 
     {% if error %}
     <div class="alert">{{ error }}</div>
@@ -44,13 +88,38 @@
     {% if image_data %}
     <div class="results-grid">
       <div class="preview-card">
-        <h2>Uploaded Image</h2>
+        <h2>Uploaded Sample</h2>
         <img src="{{ image_data }}" alt="Uploaded image preview">
         <p>{{ filename }}</p>
+        <div class="meta">
+          <span class="chip">{{ sample_type|title }}</span>
+          {% if location %}
+          <span class="chip">{{ location }}</span>
+          {% endif %}
+        </div>
+        {% if notes %}
+        <p class="notes">{{ notes }}</p>
+        {% endif %}
+      </div>
+
+      <div class="diagnosis-card">
+        <h2>Diagnosis Summary</h2>
+        {% if diagnosis %}
+        <p class="diagnosis-label">{{ diagnosis.label }}</p>
+        <p class="diagnosis-meta">Confidence {{ "%.1f"|format(diagnosis.confidence * 100) }}%</p>
+        <h3>Recommendations</h3>
+        <ul class="recommendations">
+          {% for item in recommendations %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="diagnosis-meta">Run an analysis to see a diagnosis summary.</p>
+        {% endif %}
       </div>
 
       <div class="prediction-card">
-        <h2>Top Predictions</h2>
+        <h2>Model Predictions</h2>
         <ol>
           {% for prediction in predictions %}
           <li>
@@ -59,14 +128,48 @@
               <span>{{ "%.2f"|format(prediction.confidence * 100) }}%</span>
             </div>
             <div class="progress">
-              <div class="progress-bar" style="width: {{ prediction.confidence * 100 }}%"></div>
+              <div class="progress-bar" data-width="{{ '%.2f'|format(prediction.confidence * 100) }}"></div>
             </div>
           </li>
           {% endfor %}
         </ol>
+        <p class="muted-note">Predictions are saved to the field history log.</p>
       </div>
+    </div>
+    {% endif %}
+
+    {% if recent_predictions %}
+    <div class="history">
+      <h2>Recent Analyses</h2>
+      <ul class="history-list">
+        {% for record in recent_predictions %}
+        <li>
+          <div class="history-main">
+            <strong>{{ record.top_label }}</strong>
+            <span>{{ "%.1f"|format(record.top_confidence * 100) }}%</span>
+          </div>
+          <div class="history-meta">
+            <span>{{ record.created_at }}</span>
+            <span>{{ record.sample_type|title }}</span>
+            {% if record.location %}
+            <span>{{ record.location }}</span>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <a class="button-link subtle" href="{{ url_for('main.history') }}">View full history</a>
     </div>
     {% endif %}
   </section>
 </main>
+
+<script>
+  document.querySelectorAll(".progress-bar").forEach((bar) => {
+    const width = bar.dataset.width;
+    if (width) {
+      bar.style.width = `${width}%`;
+    }
+  });
+</script>
 {% endblock %}

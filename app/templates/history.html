@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction History{% endblock %}
+
+{% block content %}
+<main class="history-layout">
+  <section class="hero">
+    <a class="back-link" href="{{ url_for('main.index') }}">Back to analysis</a>
+    <h1>Field History</h1>
+    <p class="lead">
+      {% if total %}
+        {{ total }} analyses saved. Showing the latest {{ predictions|length }} entries.
+      {% else %}
+        No analyses have been saved yet.
+      {% endif %}
+    </p>
+    <div class="history-actions">
+      <a class="button-link" href="{{ url_for('main.history_csv') }}">Download CSV</a>
+    </div>
+  </section>
+
+  <section class="panel">
+    {% if error %}
+    <div class="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if predictions %}
+    <div class="history-table">
+      <div class="history-header">
+        <span>Diagnosis</span>
+        <span>Confidence</span>
+        <span>Sample</span>
+        <span>Location</span>
+        <span>Notes</span>
+        <span>Timestamp</span>
+      </div>
+      {% for row in predictions %}
+      <div class="history-row">
+        <span class="strong">{{ row.top_label }}</span>
+        <span>{{ "%.1f"|format(row.top_confidence * 100) }}%</span>
+        <span>{{ row.sample_type|title }}</span>
+        <span>{{ row.location or "-" }}</span>
+        <span class="truncate">{{ row.notes or "-" }}</span>
+        <span>{{ row.created_at }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

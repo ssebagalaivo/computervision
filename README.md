@@ -1,13 +1,35 @@
-# VGG16 Flask Image Classifier
+# Coffee Disease Intelligence (VGG16 Demo)
 
-This project packages a pretrained `VGG16` convolutional neural network into a Flask web application. Users upload an image, the server preprocesses it to `224 x 224`, runs ImageNet inference, and renders the top predictions with confidence scores.
+This project packages a pretrained `VGG16` model into a Flask web application that mimics a coffee disease screening workflow. Users upload images of coffee leaves or berries, the server runs ImageNet inference, and the UI presents a diagnosis summary, recommendations, and a saved analysis log.
 
 ## Features
 
-- Pretrained `VGG16` weights loaded lazily on first prediction
-- Upload form for `PNG`, `JPG`, `JPEG`, and `WEBP` images
-- Confidence bars for the top 5 ImageNet classes
-- Deployment-ready `Dockerfile`, `Procfile`, and `gunicorn` entry point
+- Upload field photos of coffee leaves or berries
+- Model-driven detection with top predictions and confidence scores
+- Diagnosis summary with control/treatment recommendations
+- Optional notes and location metadata captured per analysis
+- Recent analysis history stored locally in SQLite
+- Full history page with CSV export
+
+## Model Choice
+
+This app is wired for a coffee disease classifier based on **EfficientNetB0**. The model is expected at:
+
+- `/Users/praisewebsolutions/computervision/models/coffee_disease_efficientnetb0.keras`
+
+The label order is:
+
+1. Healthy
+2. Coffee Leaf Rust
+3. Cercospora Leaf Spot
+4. Phoma Leaf Spot
+5. Coffee Berry Disease
+
+If the model file is missing, the app automatically falls back to a generic ImageNet `VGG16` model and shows a notice in the UI.
+
+## Important Note
+
+Replace the model file with your trained coffee disease weights for production use. The fallback ImageNet model is only for demo purposes.
 
 ## Project Layout
 
@@ -17,7 +39,9 @@ This project packages a pretrained `VGG16` convolutional neural network into a F
 │   ├── __init__.py
 │   ├── config.py
 │   ├── model.py
+│   ├── recommendations.py
 │   ├── routes.py
+│   ├── storage.py
 │   ├── static/css/styles.css
 │   └── templates/
 ├── Dockerfile
@@ -49,6 +73,48 @@ Open `http://127.0.0.1:5000`.
 
 If `python3.12` is not available yet, install Python 3.12 from python.org or Homebrew, then rerun the commands above.
 
+## Windows Setup (PowerShell)
+
+Run these commands from the project root:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m flask --app wsgi run --debug
+```
+
+Open `http://127.0.0.1:5000`.
+
+Optional model path override:
+
+```powershell
+$env:COFFEE_MODEL_PATH="C:\\full\\path\\to\\coffee_disease_efficientnetb0.keras"
+$env:COFFEE_MODEL_INPUT_SIZE="224"
+```
+
+## Windows Setup (Command Prompt)
+
+Run these commands from the project root:
+
+```cmd
+py -3.12 -m venv .venv
+.\.venv\Scripts\activate.bat
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m flask --app wsgi run --debug
+```
+
+Open `http://127.0.0.1:5000`.
+
+Optional model path override:
+
+```cmd
+set COFFEE_MODEL_PATH=C:\full\path\to\coffee_disease_efficientnetb0.keras
+set COFFEE_MODEL_INPUT_SIZE=224
+```
+
 ## Docker Run
 
 ```bash
@@ -68,7 +134,21 @@ Open `http://127.0.0.1:8000`.
 
 ## How Prediction Works
 
-1. Flask receives the uploaded file.
+1. Flask receives the uploaded file and metadata.
 2. Pillow converts the image to RGB and resizes it to `224 x 224`.
 3. TensorFlow applies `preprocess_input` for VGG16.
-4. The model returns ImageNet probabilities, and the app shows the top 5 classes.
+4. The model returns ImageNet probabilities, and the app displays diagnosis, recommendations, and a saved history entry.
+
+## History & Export
+
+- Visit `http://127.0.0.1:5000/history` for the full analysis log.
+- Download the CSV export from `http://127.0.0.1:5000/history.csv`.
+
+## Configuration
+
+You can change the model path or input size with environment variables:
+
+```bash
+export COFFEE_MODEL_PATH="/absolute/path/to/your_model.keras"
+export COFFEE_MODEL_INPUT_SIZE=224
+```
