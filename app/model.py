@@ -115,6 +115,7 @@ class CoffeeDiseaseClassifier:
                     from tensorflow.keras.models import load_model
                     import tensorflow as tf
                     import pathlib
+                    import inspect
 
                     print("\n🔄 Loading coffee disease model...")
                     print("📁 Path:", self.model_path)
@@ -154,13 +155,50 @@ class CoffeeDiseaseClassifier:
                             config.pop("groups", None)
                             return super().from_config(config)
 
-                    # Fix for older TF versions that don't accept DepthwiseConv2D.groups
+                    def _call_loader(loader, *, label: str):
+                        print(f"🔁 Trying {label}...")
+                        kwargs = {
+                            "compile": False,
+                            "custom_objects": {
+                                "DepthwiseConv2D": LegacyDepthwiseConv2D
+                            },
+                        }
+                        try:
+                            signature = inspect.signature(loader)
+                            if "safe_mode" in signature.parameters:
+                                kwargs["safe_mode"] = False
+                        except (TypeError, ValueError):
+                            pass
+                        return loader(load_path, **kwargs)
+
+                    loaders: list[tuple[str, object]] = [
+                        ("tf.keras.models.load_model", load_model),
+                    ]
+
+                    legacy_module = getattr(getattr(tf.keras, "saving", None), "legacy", None)
+                    legacy_loader = getattr(legacy_module, "load_model", None)
+                    if legacy_loader:
+                        loaders.append(("tf.keras.saving.legacy.load_model", legacy_loader))
+
                     try:
-                        model = load_model(
-                            load_path,
-                            compile=False,
-                            custom_objects={"DepthwiseConv2D": LegacyDepthwiseConv2D},
-                        )
+                        import tf_keras  # type: ignore
+                    except Exception:
+                        tf_keras = None
+                    if tf_keras is not None:
+                        loaders.append(("tf_keras.models.load_model", tf_keras.models.load_model))
+
+                    last_error: Exception | None = None
+                    try:
+                        for label, loader in loaders:
+                            try:
+                                model = _call_loader(loader, label=label)
+                                break
+                            except Exception as exc:
+                                print(f"⚠️ {label} failed: {exc}")
+                                last_error = exc
+                                model = None
+                        if model is None and last_error is not None:
+                            raise last_error
                     finally:
                         if temp_dir is not None:
                             temp_dir.cleanup()
