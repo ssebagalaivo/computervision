@@ -8,6 +8,8 @@
   const form = document.querySelector(".upload-form");
   const runButton = document.getElementById("run-analysis");
   const fileInput = document.getElementById("image");
+  const locationInput = document.getElementById("location");
+  const locationStatus = document.getElementById("location-status");
   const errorEl = document.getElementById("client-error");
   const statusEl = document.getElementById("model-status");
   const resultsEl = document.getElementById("results");
@@ -30,6 +32,12 @@
 
   let modelPromise = null;
   let previewUrl = null;
+
+  const setLocationStatus = (message) => {
+    if (locationStatus) {
+      locationStatus.textContent = message || "";
+    }
+  };
 
   const setStatus = (message) => {
     if (statusEl) {
@@ -88,6 +96,34 @@
     const model = await modelPromise;
     setStatus("Model ready.");
     return model;
+  };
+
+  const autoDetectLocation = () => {
+    if (!locationInput || locationInput.value.trim()) {
+      return;
+    }
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("Location detection is not available in this browser.");
+      return;
+    }
+
+    setLocationStatus("Detecting location...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        locationInput.value = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        const roundedAccuracy = Math.round(accuracy);
+        setLocationStatus(`Location detected within about ${roundedAccuracy} m.`);
+      },
+      () => {
+        setLocationStatus("Allow location access to fill this automatically.");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 300000,
+        timeout: 10000,
+      },
+    );
   };
 
   const updatePreview = (file) => {
@@ -290,4 +326,5 @@
     event.preventDefault();
   });
   runButton.addEventListener("click", runAnalysis);
+  autoDetectLocation();
 })();

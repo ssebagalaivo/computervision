@@ -57,14 +57,15 @@
           </select>
         </div>
         <div class="field">
-          <label for="location">Location (optional)</label>
+          <label for="location">Location (auto-detected when allowed)</label>
           <input
             id="location"
             name="location"
             type="text"
-            placeholder="Farm block, district, GPS"
+            placeholder="GPS coordinates, farm block, or district"
             value="{{ location }}"
           >
+          <p id="location-status" class="field-note"></p>
         </div>
       </div>
 
